@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Scrollbar, Frame
-import base64
+from tkinter import filedialog, messagebox, Scrollbar, Frame, Toplevel
 import rsa
+from sympy import gcd, gcdex  # 确保已安装 sympy
 import time
+import random
 
 
 class RsaApp:
@@ -11,7 +12,7 @@ class RsaApp:
         self.master.title("RSA加密解密器")
 
         # Create a frame for key generation options
-        key_gen_frame = Frame(master)
+        key_gen_frame = tk.Frame(master)
         key_gen_frame.pack(pady=10)
 
         # Key generation method selection
@@ -47,20 +48,20 @@ class RsaApp:
         tk.Radiobutton(master, text="文件输出", variable=self.output_method_var, value='file').pack()
 
         # Input Text Box with scrollbar
-        self.in_frame = Frame(master)
+        self.in_frame = tk.Frame(master)
         self.in_frame.pack()
         self.in_entry = tk.Text(self.in_frame, height=5, width=50)
         self.in_entry.pack(side=tk.LEFT)
-        self.in_scroll = Scrollbar(self.in_frame, command=self.in_entry.yview)
+        self.in_scroll = tk.Scrollbar(self.in_frame, command=self.in_entry.yview)
         self.in_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.in_entry.config(yscrollcommand=self.in_scroll.set)
 
         # Output Text Box with scrollbar
-        self.out_frame = Frame(master)
+        self.out_frame = tk.Frame(master)
         self.out_frame.pack()
         self.out_entry = tk.Text(self.out_frame, height=5, width=50)
         self.out_entry.pack(side=tk.LEFT)
-        self.out_scroll = Scrollbar(self.out_frame, command=self.out_entry.yview)
+        self.out_scroll = tk.Scrollbar(self.out_frame, command=self.out_entry.yview)
         self.out_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.out_entry.config(yscrollcommand=self.out_scroll.set)
 
@@ -71,6 +72,8 @@ class RsaApp:
         tk.Button(button_frame, text="加密", command=self.encode_click).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="解密", command=self.decode_click).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="选择文件", command=self.select_file).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="执行共模攻击", command=self.common_modulus_interface).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="关于", command=self.show_about).pack(side=tk.LEFT, padx=5)
 
         # Generate keys initially
         self.generate_keys()
@@ -152,6 +155,86 @@ class RsaApp:
                 messagebox.showerror("错误", "解密失败：无效的私钥或数据。")
             except Exception as e:
                 messagebox.showerror("错误", str(e))
+
+    def common_modulus_interface(self):
+        # 新增功能界面
+        self.common_modulus_frame = Frame(self.master)
+        self.common_modulus_frame.pack(pady=10)
+
+        tk.Label(self.common_modulus_frame, text="加密结果1:").pack(side=tk.LEFT)
+        self.c1_entry = tk.Entry(self.common_modulus_frame)
+        self.c1_entry.pack(side=tk.LEFT)
+
+        tk.Label(self.common_modulus_frame, text="公钥e1:").pack(side=tk.LEFT)
+        self.e1_entry = tk.Entry(self.common_modulus_frame)
+        self.e1_entry.pack(side=tk.LEFT)
+
+        tk.Label(self.common_modulus_frame, text="加密结果2:").pack(side=tk.LEFT)
+        self.c2_entry = tk.Entry(self.common_modulus_frame)
+        self.c2_entry.pack(side=tk.LEFT)
+
+        tk.Label(self.common_modulus_frame, text="公钥e2:").pack(side=tk.LEFT)
+        self.e2_entry = tk.Entry(self.common_modulus_frame)
+        self.e2_entry.pack(side=tk.LEFT)
+
+        # 自动生成 e1 和 e2
+        self.generate_coprime_e()
+
+        tk.Button(self.common_modulus_frame, text="执行共模攻击", command=self.perform_common_modulus_attack).pack(side=tk.LEFT)
+
+    def generate_coprime_e(self):
+        while True:
+            self.e1 = random.choice([3, 65537])  # 可以选择其他小的素数
+            self.e2 = random.choice([3, 65537])
+            if self.check_coprime(self.e1, self.e2):
+                break
+        self.e1_entry.insert(0, str(self.e1))
+        self.e2_entry.insert(0, str(self.e2))
+
+    def check_coprime(self, a, b):
+        return gcd(a, b) == 1
+
+    def perform_common_modulus_attack(self):
+        try:
+            c1 = int(self.c1_entry.get())
+            c2 = int(self.c2_entry.get())
+            e1 = int(self.e1_entry.get())
+            e2 = int(self.e2_entry.get())
+            n = self.pubkey.n  # 使用当前公钥的模数
+
+            # 执行共模攻击
+            decrypted_message = self.common_modulus_attack(c1, c2, e1, e2, n)
+            self.output_result(f"恢复的明文: {decrypted_message}")
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
+
+    def show_about(self):
+        about_window = Toplevel(self.master)
+        about_window.title("关于")
+        about_window.geometry("300x200")
+
+        # 设置窗口图标
+        about_window.iconbitmap("./logo.ico")  # 替换为你的图标路径
+
+        tk.Label(about_window, text="作者: 不醒人室").pack(pady=10)
+        tk.Label(about_window, text="版本: 1.0.3").pack(pady=5)
+        tk.Label(about_window, text="GitHub:").pack(pady=5)
+
+        github_button = tk.Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"))
+        github_button.pack(pady=10)
+
+    def open_github(self, url):
+        import webbrowser
+        webbrowser.open(url)
+
+    def common_modulus_attack(self, c1, c2, e1, e2, n):
+        g, x, y = gcdex(e1, e2)
+        if g != 1:
+            raise ValueError("e1和e2的gcd不为1，无法使用共模攻击。")
+
+        # 计算恢复的明文
+        m = (pow(c1, x, n) * pow(c2, y, n)) % n
+        return m
 
     def get_input(self):
         if self.input_method_var.get() == 'keyboard':
