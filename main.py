@@ -121,26 +121,30 @@ class RsaApp:
             try:
                 start_time = time.time()
                 encrypted_text = rsa.encrypt(input_text.encode('utf-8'), self.pubkey)
-                encrypted_base64 = base64.b64encode(encrypted_text).decode('utf-8')
+                # Convert encrypted bytes to an integer
+                encrypted_integer = int.from_bytes(encrypted_text, byteorder='big')
                 end_time = time.time()
 
-                self.output_result(f"加密结果:\n{encrypted_base64}\n\n加密时间: {end_time - start_time:.6f}秒")
+                self.output_result(f"加密结果（数字形式）:\n{encrypted_integer}\n\n加密时间: {end_time - start_time:.6f}秒")
 
                 if self.output_method_var.get() == 'file':
-                    self.save_to_file('encrypted.txt', encrypted_base64)
+                    self.save_to_file('encrypted.txt', str(encrypted_integer))
 
             except Exception as e:
                 messagebox.showerror("错误", str(e))
 
     def decode_click(self):
-        input_text = self.get_input()  # 获取加密后的文本
-        priv_key_str = self.priv_key_entry.get('1.0', tk.END).strip()  # 获取当前输入的私钥
+        input_text = self.get_input()
+        priv_key_str = self.priv_key_entry.get('1.0', tk.END).strip()
         if input_text and priv_key_str:
             try:
-                encrypted_bytes = base64.b64decode(input_text)  # 解码 Base64
-                privkey = rsa.PrivateKey.load_pkcs1(priv_key_str.encode('utf-8'))  # 从输入加载私钥
+                # Convert the input integer back to bytes
+                encrypted_integer = int(input_text)
+                encrypted_bytes = encrypted_integer.to_bytes((encrypted_integer.bit_length() + 7) // 8, byteorder='big')
+
+                privkey = rsa.PrivateKey.load_pkcs1(priv_key_str.encode('utf-8'))
                 start_time = time.time()
-                decrypted_text = rsa.decrypt(encrypted_bytes, privkey).decode('utf-8')  # 使用私钥解密
+                decrypted_text = rsa.decrypt(encrypted_bytes, privkey).decode('utf-8')
                 end_time = time.time()
 
                 self.output_result(f"解密结果:\n{decrypted_text}\n\n解密时间: {end_time - start_time:.6f}秒")
