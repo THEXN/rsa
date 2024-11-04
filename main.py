@@ -72,12 +72,18 @@ class RsaApp:
         tk.Button(button_frame, text="加密", command=self.encode_click).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="解密", command=self.decode_click).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="选择文件", command=self.select_file).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="执行共模攻击", command=self.common_modulus_interface).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="共模攻击", command=self.toggle_common_modulus_interface).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="关于", command=self.show_about).pack(side=tk.LEFT, padx=5)
 
         # Generate keys initially
         self.generate_keys()
-
+        self.common_modulus_frame = None
+    def toggle_common_modulus_interface(self):
+        if self.common_modulus_frame is None:
+            self.create_common_modulus_interface()
+        else:
+            self.destroy_common_modulus_interface()
+            
     def toggle_key_inputs(self):
         if self.key_gen_method_var.get() == 'auto':
             self.pub_key_entry.config(state=tk.DISABLED)
@@ -156,40 +162,33 @@ class RsaApp:
             except Exception as e:
                 messagebox.showerror("错误", str(e))
 
-    def common_modulus_interface(self):
-        # 新增功能界面
-        self.common_modulus_frame = Frame(self.master)
+    def create_common_modulus_interface(self):
+        self.common_modulus_frame = tk.Frame(self.master)
         self.common_modulus_frame.pack(pady=10)
 
-        tk.Label(self.common_modulus_frame, text="加密结果1:").pack(side=tk.LEFT)
+        tk.Label(self.common_modulus_frame, text="加密结果1:").grid(row=0, column=0)
         self.c1_entry = tk.Entry(self.common_modulus_frame)
-        self.c1_entry.pack(side=tk.LEFT)
+        self.c1_entry.grid(row=0, column=1)
 
-        tk.Label(self.common_modulus_frame, text="公钥e1:").pack(side=tk.LEFT)
+        tk.Label(self.common_modulus_frame, text="公钥e1:").grid(row=1, column=0)
         self.e1_entry = tk.Entry(self.common_modulus_frame)
-        self.e1_entry.pack(side=tk.LEFT)
+        self.e1_entry.grid(row=1, column=1)
 
-        tk.Label(self.common_modulus_frame, text="加密结果2:").pack(side=tk.LEFT)
+        tk.Label(self.common_modulus_frame, text="加密结果2:").grid(row=2, column=0)
         self.c2_entry = tk.Entry(self.common_modulus_frame)
-        self.c2_entry.pack(side=tk.LEFT)
+        self.c2_entry.grid(row=2, column=1)
 
-        tk.Label(self.common_modulus_frame, text="公钥e2:").pack(side=tk.LEFT)
+        tk.Label(self.common_modulus_frame, text="公钥e2:").grid(row=3, column=0)
         self.e2_entry = tk.Entry(self.common_modulus_frame)
-        self.e2_entry.pack(side=tk.LEFT)
+        self.e2_entry.grid(row=3, column=1)
 
-        # 自动生成 e1 和 e2
-        self.generate_coprime_e()
 
-        tk.Button(self.common_modulus_frame, text="执行共模攻击", command=self.perform_common_modulus_attack).pack(side=tk.LEFT)
-
-    def generate_coprime_e(self):
-        while True:
-            self.e1 = random.choice([3, 65537])  # 可以选择其他小的素数
-            self.e2 = random.choice([3, 65537])
-            if self.check_coprime(self.e1, self.e2):
-                break
-        self.e1_entry.insert(0, str(self.e1))
-        self.e2_entry.insert(0, str(self.e2))
+        tk.Button(self.common_modulus_frame, text="执行共模攻击", command=self.perform_common_modulus_attack).grid(row=4, columnspan=2)
+        
+    def destroy_common_modulus_interface(self):
+        if self.common_modulus_frame:
+            self.common_modulus_frame.destroy()
+            self.common_modulus_frame = None
 
     def check_coprime(self, a, b):
         return gcd(a, b) == 1
@@ -217,7 +216,7 @@ class RsaApp:
         about_window.iconbitmap("./logo.ico")  # 替换为你的图标路径
 
         tk.Label(about_window, text="作者: 不醒人室").pack(pady=10)
-        tk.Label(about_window, text="版本: 1.0.3").pack(pady=5)
+        tk.Label(about_window, text="版本: 1.0.4").pack(pady=5)
         tk.Label(about_window, text="GitHub:").pack(pady=5)
 
         github_button = tk.Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"))
