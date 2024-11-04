@@ -171,5 +171,6 @@ class RsaApp:
 
 # Create the main Tkinter window
 root = tk.Tk()
+root.iconbitmap('./logo.ico')
 app = RsaApp(root)
 root.mainloop()
