@@ -83,7 +83,13 @@ class RsaApp:
 
         # 初始化生成密钥
         self.generate_keys()
-
+        self.common_modulus_frame = None
+    def toggle_common_modulus_interface(self):
+        if self.common_modulus_frame is None:
+            self.create_common_modulus_interface()
+        else:
+            self.destroy_common_modulus_interface()
+            
     def toggle_key_inputs(self):
         state = tk.NORMAL if self.key_gen_method_var.get() == 'manual' else tk.DISABLED
         self.pub_key_entry.config(state=state)
