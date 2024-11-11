@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Scrollbar, Frame
+from tkinter import filedialog, messagebox, Scrollbar, Frame,Toplevel
 import rsa
 import time
 from gmpy2 import gcdext, powmod
@@ -8,6 +8,7 @@ import base64
 from pyasn1.type import univ, namedtype
 from pyasn1.codec.der import encoder as der_encoder
 from math import gcd
+
 
 # 公钥 PEM 格式生成函数
 class RSAPublicKey(univ.Sequence):
@@ -107,7 +108,7 @@ class RsaApp:
         tk.Button(button_frame, text="选择文件", command=self.select_file).grid(row=0, column=3, padx=5)
         tk.Button(button_frame, text="共模攻击", command=self.toggle_common_modulus_interface).grid(row=0, column=4, padx=5)
         tk.Button(button_frame, text="循环攻击", command=self.toggle_private_key_interface).grid(row=0, column=5, padx=5)
-
+        tk.Button(button_frame, text="关于", command=self.show_about).grid(row=0, column=6, padx=5)
 
         # 调整网格权重
         main_frame.grid_rowconfigure(4, weight=1)  # 公钥文本框
@@ -121,7 +122,47 @@ class RsaApp:
         self.private_key_frame = None
         # 初始化生成密钥
         self.generate_keys()
+      
         
+
+    #region
+    def show_about(self):
+        # 创建新窗口
+        about_window = Toplevel(self.master)
+        about_window.title("关于")
+        about_window.geometry("300x200")
+
+        # 获取父窗口的屏幕宽度和高度
+        screen_width = about_window.winfo_screenwidth()
+        screen_height = about_window.winfo_screenheight()
+
+        # 获取窗口的宽度和高度
+        window_width = 300
+        window_height = 200
+
+        # 计算使窗口居中的位置
+        position_top = int(screen_height / 2 - window_height / 2)
+        position_left = int(screen_width / 2 - window_width / 2)
+
+        # 设置窗口的位置
+        about_window.geometry(f"{window_width}x{window_height}+{position_left}+{position_top}")
+
+        # 设置窗口图标
+        about_window.iconbitmap("./logo.ico")  # 替换为你的图标路径
+
+        # 添加标签和按钮
+        tk.Label(about_window, text="作者: 不醒人室").pack(pady=10)
+        tk.Label(about_window, text="版本: 1.1.0").pack(pady=5)
+        tk.Label(about_window, text="GitHub:").pack(pady=5)
+
+        github_button = tk.Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"))
+        github_button.pack(pady=10)
+
+    def open_github(self, url):
+        import webbrowser
+        webbrowser.open(url)
+
+    #endregion
     # rsa加密解密算法逻辑
     # region
     def toggle_common_modulus_interface(self):
@@ -474,5 +515,6 @@ class RsaApp:
                 
 # 启动主窗口
 root = tk.Tk()
+root.iconbitmap('./logo.ico')
 app = RsaApp(root)
 root.mainloop()
