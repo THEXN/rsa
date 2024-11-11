@@ -7,6 +7,7 @@ from libnum import n2s
 import base64
 from pyasn1.type import univ, namedtype
 from pyasn1.codec.der import encoder as der_encoder
+from math import gcd
 
 # 公钥 PEM 格式生成函数
 class RSAPublicKey(univ.Sequence):
@@ -105,6 +106,8 @@ class RsaApp:
         tk.Button(button_frame, text="解密", command=self.decode_click).grid(row=0, column=2, padx=5)
         tk.Button(button_frame, text="选择文件", command=self.select_file).grid(row=0, column=3, padx=5)
         tk.Button(button_frame, text="共模攻击", command=self.toggle_common_modulus_interface).grid(row=0, column=4, padx=5)
+        tk.Button(button_frame, text="循环攻击", command=self.toggle_private_key_interface).grid(row=0, column=5, padx=5)
+
 
         # 调整网格权重
         main_frame.grid_rowconfigure(4, weight=1)  # 公钥文本框
@@ -113,13 +116,14 @@ class RsaApp:
         main_frame.grid_rowconfigure(9, weight=1)  # 输出框
         main_frame.grid_columnconfigure(1, weight=1)  # 主要内容列扩展
 
+        # 初始化为 None，第一次点击时再创建
         self.common_modulus_frame = None
+        self.private_key_frame = None
         # 初始化生成密钥
         self.generate_keys()
-
-
-
-
+        
+    # rsa加密解密算法逻辑
+    # region
     def toggle_common_modulus_interface(self):
         if self.common_modulus_frame is None:
             self.create_common_modulus_interface()
@@ -224,17 +228,22 @@ class RsaApp:
         with open(filename, 'w') as file:
             file.write(content)
         messagebox.showinfo("文件保存", f"内容已保存到 {filename}")
-        
+    # endregion
+    
+    #共模攻击逻辑
+    # region
+    # 切换共模攻击界面显示与隐藏
     def toggle_common_modulus_interface(self):
-        # 确保 common_modulus_frame 已被创建
+        # 如果 common_modulus_frame 尚未创建，则创建
         if self.common_modulus_frame is None:
             self.create_common_modulus_interface()  # 第一次调用时创建界面
 
         # 确保不为空后再调用 winfo_ismapped()
         if self.common_modulus_frame and self.common_modulus_frame.winfo_ismapped():
-            self.common_modulus_frame.grid_remove()  # 隐藏
+            self.common_modulus_frame.grid_remove()  # 隐藏当前显示的共模攻击界面
         else:
-            self.common_modulus_frame.grid(row=12, column=0, columnspan=2, sticky="nsew")  # 显示
+            # 显示共模攻击界面，并覆盖之前的界面
+            self.common_modulus_frame.grid(row=12, column=0, columnspan=2, sticky="nsew")  # 在相同的位置显示
 
 
     def create_common_modulus_interface(self):
@@ -368,11 +377,101 @@ class RsaApp:
                 self.entry_n.insert(0, n1)
             else:
                 messagebox.showerror("模数不匹配", "模数 n1 和 n2 不一致，请检查公钥文件。")
+    # endregion
+    
+    #循环攻击逻辑
+    # region
+    # 切换私钥计算界面显示与隐藏
+    def toggle_private_key_interface(self):
+        # 如果 private_key_frame 尚未创建，则创建
+        if self.private_key_frame is None:
+            self.create_private_key_interface()  # 第一次调用时创建界面
+
+        # 确保不为空后再调用 winfo_ismapped()
+        if self.private_key_frame and self.private_key_frame.winfo_ismapped():
+            self.private_key_frame.grid_remove()  # 隐藏当前显示的私钥计算界面
+        else:
+            # 显示私钥计算界面，并覆盖之前的界面
+            self.private_key_frame.grid(row=12, column=0, columnspan=2, sticky="nsew")  # 在相同的位置显示
 
 
+    # 创建私钥计算界面
+    def create_private_key_interface(self):
+        self.private_key_frame = tk.Frame(self.master)
+    
+        # 输入框 p
+        tk.Label(self.private_key_frame, text="质数 p:").grid(row=0, column=0, sticky="e")
+        self.entry_p = tk.Entry(self.private_key_frame)
+        self.entry_p.grid(row=0, column=1)
+
+        # 输入框 q
+        tk.Label(self.private_key_frame, text="质数 q:").grid(row=1, column=0, sticky="e")
+        self.entry_q = tk.Entry(self.private_key_frame)
+        self.entry_q.grid(row=1, column=1)
+
+        # 输入框 e
+        tk.Label(self.private_key_frame, text="公钥指数 e:").grid(row=2, column=0, sticky="e")
+        self.entry_e = tk.Entry(self.private_key_frame)
+        self.entry_e.grid(row=2, column=1)
+
+        # 计算按钮
+        tk.Button(self.private_key_frame, text="计算私钥 d", command=self.compute_private_key).grid(row=3, columnspan=2)
+
+        # 显示私钥 d 的输入框
+        tk.Label(self.private_key_frame, text="私钥 d:").grid(row=4, column=0, sticky="e")
+        self.entry_d = tk.Entry(self.private_key_frame)
+        self.entry_d.grid(row=4, column=1)
+        # 显示模数 n 的标签
+        tk.Label(self.private_key_frame, text="模数 n:").grid(row=5, column=0, sticky="e")
+        self.entry_n = tk.Entry(self.private_key_frame)
+        self.entry_n.grid(row=5, column=1)
+
+        # 显示找到的 k 值的标签
+        tk.Label(self.private_key_frame, text="找到的 k:").grid(row=6, column=0, sticky="e")
+        self.entry_k = tk.Entry(self.private_key_frame)
+        self.entry_k.grid(row=6, column=1)
+
+    # 计算私钥 d
+    def compute_private_key(self):
+        try:
+            p = int(self.entry_p.get())
+            q = int(self.entry_q.get())
+            e = int(self.entry_e.get())
+            n = p * q
+            phi_n = (p - 1) * (q - 1)
+
+            # 检查 e 和 φ(n) 是否互质
+            if gcd(e, phi_n) != 1:
+                messagebox.showerror("错误", "e 必须与 φ(n) 互质")
+                return
+
+            # 计算 d
+            d = self.mod_inverse(e, phi_n)
+
+            # 显示结果
+            self.entry_d.delete(0, tk.END)
+            self.entry_d.insert(0, str(d))
+            
+            self.entry_n.delete(0, tk.END)
+            self.entry_n.insert(0, str(n))
+
+        except ValueError:
+            messagebox.showerror("输入错误", "请输入有效的数字！")
+
+    # 求逆元的扩展欧几里得算法
+    def mod_inverse(self, a, m):
+        m0, x0, x1 = m, 0, 1
+        if m == 1:
+            return 0
+        while a > 1:
+            q = a // m
+            m, a = a % m, m
+            x0, x1 = x1 - q * x0, x0
+        if x1 < 0:
+            x1 += m0
+        return x1
+    # endregion           
                 
-
-
 # 启动主窗口
 root = tk.Tk()
 app = RsaApp(root)
