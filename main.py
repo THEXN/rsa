@@ -2,13 +2,15 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, Scrollbar, Frame
 import rsa
 import time
-
+from gmpy2 import gcdext, powmod
+from libnum import n2s
 
 class RsaApp:
+
     def __init__(self, master):
         self.master = master
         self.master.title("RSA加密解密器")
-        self.master.geometry("600x400")  # 初始窗口大小
+        self.master.geometry("650x500")  # 初始窗口大小，调整为合适的大小
         self.master.resizable(True, True)  # 允许窗口大小调整
 
         # 主布局框架
@@ -84,12 +86,16 @@ class RsaApp:
         # 初始化生成密钥
         self.generate_keys()
         self.common_modulus_frame = None
+
+        # 创建加解密工具界面
+        self.create_common_modulus_interface()
+
     def toggle_common_modulus_interface(self):
         if self.common_modulus_frame is None:
             self.create_common_modulus_interface()
         else:
             self.destroy_common_modulus_interface()
-            
+
     def toggle_key_inputs(self):
         state = tk.NORMAL if self.key_gen_method_var.get() == 'manual' else tk.DISABLED
         self.pub_key_entry.config(state=state)
@@ -104,8 +110,17 @@ class RsaApp:
             try:
                 self.pubkey = rsa.PublicKey.load_pkcs1(self.pub_key_entry.get('1.0', tk.END).strip().encode('utf-8'))
                 self.privkey = rsa.PrivateKey.load_pkcs1(self.priv_key_entry.get('1.0', tk.END).strip().encode('utf-8'))
+                self.display_keys()
             except Exception as e:
                 messagebox.showerror("错误", str(e))
+
+    def display_keys(self):
+        """显示公钥和私钥"""
+        self.pub_key_entry.delete('1.0', tk.END)
+        self.pub_key_entry.insert('1.0', self.pubkey.save_pkcs1().decode('utf-8'))
+
+        self.priv_key_entry.delete('1.0', tk.END)
+        self.priv_key_entry.insert('1.0', self.privkey.save_pkcs1().decode('utf-8'))
 
     def select_file(self):
         filename = filedialog.askopenfilename()
@@ -137,34 +152,73 @@ class RsaApp:
                 decrypted_text = rsa.decrypt(encrypted_bytes, privkey).decode('utf-8')
                 end_time = time.time()
                 result = f"解密结果:\n{decrypted_text}\n\n解密时间: {end_time - start_time:.6f}秒"
-                self.output_result(result)
+                self.output_result(result, 'decrypted.txt')
             except Exception as e:
                 messagebox.showerror("错误", str(e))
 
     def get_input(self):
-        return self.in_entry.get('1.0', 'end').strip()
+        """从输入框获取内容"""
+        if self.input_method_var.get() == 'keyboard':
+            return self.in_entry.get('1.0', tk.END).strip()
+        elif self.input_method_var.get() == 'file':
+            filename = filedialog.askopenfilename()
+            if filename:
+                with open(filename, 'r') as file:
+                    return file.read().strip()
+        return ""
 
     def output_result(self, result, filename=None):
         self.out_entry.delete('1.0', tk.END)
         self.out_entry.insert('1.0', result)
-        if filename and self.output_method_var.get() == 'file':
+        if self.output_method_var.get() == 'file' and filename:
             with open(filename, 'w') as file:
                 file.write(result)
-            messagebox.showinfo("文件保存", f"内容已保存到 {filename}")
 
-    def display_keys(self):
-        self.pub_key_entry.config(state=tk.NORMAL)
-        self.priv_key_entry.config(state=tk.NORMAL)
-        self.pub_key_entry.delete('1.0', tk.END)
-        self.priv_key_entry.delete('1.0', tk.END)
-        self.pub_key_entry.insert('1.0', self.pubkey.save_pkcs1().decode('utf-8'))
-        self.priv_key_entry.insert('1.0', self.privkey.save_pkcs1().decode('utf-8'))
-        self.pub_key_entry.config(state=tk.DISABLED)
-        self.priv_key_entry.config(state=tk.DISABLED)
+    def create_common_modulus_interface(self):
+        self.common_modulus_frame = tk.Frame(self.master)
+        self.common_modulus_frame.grid(row=9, column=0, columnspan=2, sticky="nsew")
 
+        tk.Label(self.common_modulus_frame, text="模数 n:").grid(row=0, column=0, sticky="e")
+        self.entry_n = tk.Entry(self.common_modulus_frame)
+        self.entry_n.grid(row=0, column=1)
+        tk.Label(self.common_modulus_frame, text="密文 c1:").grid(row=1, column=0, sticky="e")
+        self.entry_c1 = tk.Entry(self.common_modulus_frame)
+        self.entry_c1.grid(row=1, column=1)
+        tk.Label(self.common_modulus_frame, text="密文 c2:").grid(row=2, column=0, sticky="e")
+        self.entry_c2 = tk.Entry(self.common_modulus_frame)
+        self.entry_c2.grid(row=2, column=1)
+        tk.Label(self.common_modulus_frame, text="公钥指数 e1:").grid(row=3, column=0, sticky="e")
+        self.entry_e1 = tk.Entry(self.common_modulus_frame)
+        self.entry_e1.grid(row=3, column=1)
+        tk.Label(self.common_modulus_frame, text="公钥指数 e2:").grid(row=4, column=0, sticky="e")
+        self.entry_e2 = tk.Entry(self.common_modulus_frame)
+        self.entry_e2.grid(row=4, column=1)
+
+        # 解密结果显示框
+        tk.Label(self.common_modulus_frame, text="解密结果:").grid(row=5, column=0, sticky="e")
+        self.entry_result = tk.Entry(self.common_modulus_frame)
+        self.entry_result.grid(row=5, column=1)
+
+        tk.Button(self.common_modulus_frame, text="解密", command=self.decrypt_common_modulus).grid(row=6, column=0, columnspan=2)
+    
+    def decrypt_common_modulus(self):
+        try:
+            n = int(self.entry_n.get())
+            c1 = int(self.entry_c1.get())
+            c2 = int(self.entry_c2.get())
+            e1 = int(self.entry_e1.get())
+            e2 = int(self.entry_e2.get())
+
+            # 解密消息
+            s = gcdext(e1, e2)
+            m = int(pow(c1, s[1], n) * pow(c2, s[2], n) % n)
+            result = n2s(m)
+            self.entry_result.delete(0, tk.END)
+            self.entry_result.insert(0, result)
+        except ValueError:
+            messagebox.showerror("输入错误", "请输入有效的数字！")
 
 # 启动主窗口
 root = tk.Tk()
-root.iconbitmap('./logo.ico')
 app = RsaApp(root)
 root.mainloop()
