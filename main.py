@@ -72,6 +72,7 @@ class RsaApp:
         self.priv_key_entry = tk.Text(main_frame, height=4, wrap=tk.WORD)
         self.priv_key_entry.grid(row=5, column=1, sticky="nsew", padx=5, pady=5)
 
+        '''
         # 输入和输出方式选择
         tk.Label(main_frame, text="选择输入方式:").grid(row=6, column=0, sticky="w", padx=5)
         input_frame = Frame(main_frame)
@@ -79,7 +80,8 @@ class RsaApp:
         self.input_method_var = tk.StringVar(value='keyboard')
         tk.Radiobutton(input_frame, text="键盘输入", variable=self.input_method_var, value='keyboard').grid(row=0, column=0)
         tk.Radiobutton(input_frame, text="文件输入", variable=self.input_method_var, value='file').grid(row=0, column=1)
-
+        '''
+        
         tk.Label(main_frame, text="选择输出方式:").grid(row=7, column=0, sticky="w", padx=5)
         output_frame = Frame(main_frame)
         output_frame.grid(row=7, column=1, sticky="w")
