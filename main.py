@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Scrollbar, Frame,Toplevel
+from tkinter import filedialog, messagebox, Scrollbar, Frame , Toplevel, Label, Button, Canvas
 import rsa
 import time
 from gmpy2 import gcdext, powmod
@@ -8,9 +8,12 @@ import base64
 from pyasn1.type import univ, namedtype
 from pyasn1.codec.der import encoder as der_encoder
 from math import gcd
-
+from PIL import Image, ImageTk
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 # 公钥 PEM 格式生成函数
+# region
 class RSAPublicKey(univ.Sequence):
     componentType = namedtype.NamedTypes(
         namedtype.NamedType('modulus', univ.Integer()),
@@ -25,6 +28,8 @@ def create_pem_public_key(e, n):
     b64_encoded = base64.b64encode(der_encoded).decode('utf-8')
     pem_public_key = f"-----BEGIN RSA PUBLIC KEY-----\n{b64_encoded}\n-----END RSA PUBLIC KEY-----"
     return pem_public_key
+
+# endregion
 class RsaApp:
 
     def __init__(self, master):
@@ -72,15 +77,8 @@ class RsaApp:
         self.priv_key_entry = tk.Text(main_frame, height=4, wrap=tk.WORD)
         self.priv_key_entry.grid(row=5, column=1, sticky="nsew", padx=5, pady=5)
 
-        '''
-        # 输入和输出方式选择
-        tk.Label(main_frame, text="选择输入方式:").grid(row=6, column=0, sticky="w", padx=5)
-        input_frame = Frame(main_frame)
-        input_frame.grid(row=6, column=1, sticky="w")
-        self.input_method_var = tk.StringVar(value='keyboard')
-        tk.Radiobutton(input_frame, text="键盘输入", variable=self.input_method_var, value='keyboard').grid(row=0, column=0)
-        tk.Radiobutton(input_frame, text="文件输入", variable=self.input_method_var, value='file').grid(row=0, column=1)
-        '''
+
+
         
         tk.Label(main_frame, text="选择输出方式:").grid(row=7, column=0, sticky="w", padx=5)
         output_frame = Frame(main_frame)
@@ -112,6 +110,7 @@ class RsaApp:
         tk.Button(button_frame, text="循环攻击", command=self.toggle_private_key_interface).grid(row=0, column=5, padx=5)
         tk.Button(button_frame, text="关于", command=self.show_about).grid(row=0, column=6, padx=5)
 
+        
         # 调整网格权重
         main_frame.grid_rowconfigure(4, weight=1)  # 公钥文本框
         main_frame.grid_rowconfigure(5, weight=1)  # 私钥文本框
@@ -124,23 +123,22 @@ class RsaApp:
         self.private_key_frame = None
         # 初始化生成密钥
         self.generate_keys()
-      
-        
 
+    # 关于
     #region
     def show_about(self):
         # 创建新窗口
         about_window = Toplevel(self.master)
         about_window.title("关于")
-        about_window.geometry("300x200")
+        about_window.geometry("374x320")
 
         # 获取父窗口的屏幕宽度和高度
         screen_width = about_window.winfo_screenwidth()
         screen_height = about_window.winfo_screenheight()
 
         # 获取窗口的宽度和高度
-        window_width = 300
-        window_height = 200
+        window_width = 374
+        window_height = 320
 
         # 计算使窗口居中的位置
         position_top = int(screen_height / 2 - window_height / 2)
@@ -152,19 +150,32 @@ class RsaApp:
         # 设置窗口图标
         about_window.iconbitmap("./logo.ico")  # 替换为你的图标路径
 
-        # 添加标签和按钮
-        tk.Label(about_window, text="作者: 不醒人室").pack(pady=10)
-        tk.Label(about_window, text="版本: 1.1.0").pack(pady=5)
-        tk.Label(about_window, text="GitHub:").pack(pady=5)
+        # 创建 Canvas 作为背景
+        canvas = Canvas(about_window, width=374, height=320)
+        canvas.pack(fill="both", expand=True)
 
-        github_button = tk.Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"))
-        github_button.pack(pady=10)
+        # 加载背景图像
+        background_image = Image.open("./tr.jpg")  # 替换为你的背景图片路径
+        background_photo = ImageTk.PhotoImage(background_image)
+
+        # 显示背景图
+        canvas.create_image(0, 0, anchor="nw", image=background_photo)
+        canvas.image = background_photo  # 保持对图片的引用
+
+        # 添加其他控件
+        tk.Label(about_window, text="作者: 不醒人室", font=("Arial", 12), fg="white", bg="black").place(x=100, y=50)
+        tk.Label(about_window, text="版本: 1.1.1", font=("Arial", 10), fg="white", bg="black").place(x=100, y=80)
+        tk.Label(about_window, text="GitHub:", font=("Arial", 10), fg="white", bg="black").place(x=100, y=110)
+
+        github_button = Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"), font=("Arial", 10))
+        github_button.place(x=100, y=140)
 
     def open_github(self, url):
         import webbrowser
         webbrowser.open(url)
 
     #endregion
+        
     # rsa加密解密算法逻辑
     # region
     def toggle_common_modulus_interface(self):
@@ -251,14 +262,7 @@ class RsaApp:
 
     def get_input(self):
         """从输入框获取内容"""
-        if self.input_method_var.get() == 'keyboard':
-            return self.in_entry.get('1.0', tk.END).strip()
-        elif self.input_method_var.get() == 'file':
-            filename = filedialog.askopenfilename()
-            if filename:
-                with open(filename, 'r') as file:
-                    return file.read().strip()
-        return ""
+        return self.in_entry.get('1.0', tk.END).strip() 
 
     def output_result(self, result, filename=None):
         self.out_entry.delete('1.0', tk.END)
@@ -458,8 +462,8 @@ class RsaApp:
         self.entry_e.grid(row=2, column=1)
 
         # 计算按钮
-        tk.Button(self.private_key_frame, text="计算私钥 d", command=self.compute_private_key).grid(row=3, columnspan=2)
-
+        tk.Button(self.private_key_frame, text="计算私钥 d", command=self.compute_private_key).grid(row=3, column=0, padx=5, pady=5)
+        tk.Button(self.private_key_frame, text="从PEM文件提取参数", command=self.extract_params_from_pem).grid(row=3, column=1, padx=5, pady=5)
         # 显示私钥 d 的输入框
         tk.Label(self.private_key_frame, text="私钥 d:").grid(row=4, column=0, sticky="e")
         self.entry_d = tk.Entry(self.private_key_frame)
@@ -513,6 +517,60 @@ class RsaApp:
         if x1 < 0:
             x1 += m0
         return x1
+    
+        # 从PEM文件提取所有参数
+    def extract_params_from_pem(self):
+        # 选择PEM文件
+        filename = filedialog.askopenfilename(filetypes=[("PEM files", "*.pem")])
+        if not filename:
+            return
+
+        try:
+            with open(filename, 'rb') as key_file:
+                private_key = serialization.load_pem_private_key(
+                    key_file.read(),
+                    password=None,  # 如果私钥有密码保护，需要提供密码
+                    backend=default_backend()
+                )
+
+            # 获取公钥
+            public_key = private_key.public_key()
+
+            # 提取公钥参数
+            public_numbers = public_key.public_numbers()
+            n = public_numbers.n
+            e = public_numbers.e
+
+            # 提取私钥参数
+            private_numbers = private_key.private_numbers()
+            d = private_numbers.d
+            p = private_numbers.p
+            q = private_numbers.q
+            dmp1 = private_numbers.dmp1
+            dmq1 = private_numbers.dmq1
+            iqmp = private_numbers.iqmp
+
+            # 显示结果
+            self.entry_p.delete(0, tk.END)
+            self.entry_p.insert(0, str(p))
+
+            self.entry_q.delete(0, tk.END)
+            self.entry_q.insert(0, str(q))
+
+            self.entry_e.delete(0, tk.END)
+            self.entry_e.insert(0, str(e))
+
+            self.entry_d.delete(0, tk.END)
+            self.entry_d.insert(0, str(d))
+
+            self.entry_n.delete(0, tk.END)
+            self.entry_n.insert(0, str(n))
+
+            self.entry_k.delete(0, tk.END)
+            self.entry_k.insert(0, str(iqmp))
+
+        except Exception as e:
+            messagebox.showerror("错误", f"无法解析PEM文件: {e}")
     # endregion           
                 
 # 启动主窗口
