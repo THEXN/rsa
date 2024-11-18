@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Scrollbar, Frame , Toplevel, Label, Button, Canvas
+from tkinter import filedialog, messagebox, Scrollbar, Frame , Toplevel, Label, Button, Canvas,ttk
 import rsa
 import time
 from gmpy2 import gcdext, powmod
@@ -8,9 +8,22 @@ import base64
 from pyasn1.type import univ, namedtype
 from pyasn1.codec.der import encoder as der_encoder
 from math import gcd
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+import sys
+import os
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # 公钥 PEM 格式生成函数
 # region
@@ -127,48 +140,49 @@ class RsaApp:
     # 关于
     #region
     def show_about(self):
-        # 创建新窗口
         about_window = Toplevel(self.master)
         about_window.title("关于")
         about_window.geometry("374x320")
 
-        # 获取父窗口的屏幕宽度和高度
+        # 获取屏幕宽高，居中显示窗口
         screen_width = about_window.winfo_screenwidth()
         screen_height = about_window.winfo_screenheight()
-
-        # 获取窗口的宽度和高度
-        window_width = 374
-        window_height = 320
-
-        # 计算使窗口居中的位置
-        position_top = int(screen_height / 2 - window_height / 2)
-        position_left = int(screen_width / 2 - window_width / 2)
-
-        # 设置窗口的位置
-        about_window.geometry(f"{window_width}x{window_height}+{position_left}+{position_top}")
+        position_top = int(screen_height / 2 - 320 / 2)
+        position_left = int(screen_width / 2 - 374 / 2)
+        about_window.geometry(f"374x320+{position_left}+{position_top}")
 
         # 设置窗口图标
-        about_window.iconbitmap("./logo.ico")  # 替换为你的图标路径
+        icon_path = resource_path('logo.ico')
+        about_window.iconbitmap(icon_path)
 
-        # 创建 Canvas 作为背景
-        canvas = Canvas(about_window, width=374, height=320)
-        canvas.pack(fill="both", expand=True)
-
-        # 加载背景图像
-        background_image = Image.open("./tr.jpg")  # 替换为你的背景图片路径
+        # 加载背景图
+        jpg_path = resource_path('tr.jpg')
+        background_image = Image.open(jpg_path)
+        # 转换为 Tkinter 可用的图片
         background_photo = ImageTk.PhotoImage(background_image)
 
-        # 显示背景图
+        # 使用 Canvas 显示背景
+        canvas = tk.Canvas(about_window, width=374, height=320, highlightthickness=0)
+        canvas.pack(fill="both", expand=True)
         canvas.create_image(0, 0, anchor="nw", image=background_photo)
-        canvas.image = background_photo  # 保持对图片的引用
+        canvas.image = background_photo
 
-        # 添加其他控件
-        tk.Label(about_window, text="作者: 不醒人室", font=("Arial", 12), fg="white", bg="black").place(x=100, y=50)
-        tk.Label(about_window, text="版本: 1.1.1", font=("Arial", 10), fg="white", bg="black").place(x=100, y=80)
-        tk.Label(about_window, text="GitHub:", font=("Arial", 10), fg="white", bg="black").place(x=100, y=110)
+        # 添加文字控件
+        # 添加文字（带阴影效果）
+        canvas.create_text(187, 92, text="作者: 不醒人室", font=("Arial", 14, "bold"), fill="black")  # 阴影
+        canvas.create_text(185, 90, text="作者: 不醒人室", font=("Arial", 14, "bold"), fill="white")  # 主文字
 
-        github_button = Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"), font=("Arial", 10))
-        github_button.place(x=100, y=140)
+        canvas.create_text(187, 122, text="版本: 1.1.2", font=("Arial", 12), fill="black")  # 阴影
+        canvas.create_text(185, 120, text="版本: 1.1.2", font=("Arial", 12), fill="white")  # 主文字
+
+        canvas.create_text(187, 152, text="GitHub:", font=("Arial", 12), fill="black")  # 阴影
+        canvas.create_text(185, 150, text="GitHub:", font=("Arial", 12), fill="white")  # 主文字
+
+
+        # 添加 GitHub 按钮
+        github_button = ttk.Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"))
+        canvas.create_window(185, 190, window=github_button)
+
 
     def open_github(self, url):
         import webbrowser
@@ -575,6 +589,7 @@ class RsaApp:
                 
 # 启动主窗口
 root = tk.Tk()
-root.iconbitmap('./logo.ico')
+icon_path = resource_path('logo.ico')
+root.iconbitmap(icon_path)
 app = RsaApp(root)
 root.mainloop()
