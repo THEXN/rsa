@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Scrollbar, Frame , Toplevel, Label, Button, Canvas,ttk
+from tkinter import filedialog, messagebox, Scrollbar, Frame, Toplevel, Label, Button, Canvas, ttk
 import rsa
 import time
 from gmpy2 import gcdext, powmod
@@ -16,7 +16,7 @@ import os
 
 
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """ 获取资源的绝对路径，适用于 dev 和 PyInstaller """
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
@@ -251,9 +251,9 @@ class RsaApp:
         input_text = self.get_input()
         if input_text:
             try:
-                start_time = time.time()
+                start_time = time.perf_counter()
                 encrypted_integer = int.from_bytes(rsa.encrypt(input_text.encode('utf-8'), self.pubkey), byteorder='big')
-                end_time = time.time()
+                end_time = time.perf_counter()
                 result = f"加密结果（数字形式）:\n{encrypted_integer}\n\n加密时间: {end_time - start_time:.6f}秒"
                 self.output_result(result, 'encrypted.txt')
             except Exception as e:
@@ -266,9 +266,9 @@ class RsaApp:
             try:
                 encrypted_bytes = int(input_text).to_bytes((int(input_text).bit_length() + 7) // 8, byteorder='big')
                 privkey = rsa.PrivateKey.load_pkcs1(priv_key_str.encode('utf-8'))
-                start_time = time.time()
+                start_time = time.perf_counter()
                 decrypted_text = rsa.decrypt(encrypted_bytes, privkey).decode('utf-8')
-                end_time = time.time()
+                end_time = time.perf_counter()
                 result = f"解密结果:\n{decrypted_text}\n\n解密时间: {end_time - start_time:.6f}秒"
                 self.output_result(result, 'decrypted.txt')
             except Exception as e:
@@ -585,7 +585,7 @@ class RsaApp:
 
         except Exception as e:
             messagebox.showerror("错误", f"无法解析PEM文件: {e}")
-    # endregion           
+    # endregion                   
                 
 # 启动主窗口
 root = tk.Tk()
