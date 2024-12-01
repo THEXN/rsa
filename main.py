@@ -1,47 +1,81 @@
+# 导入tkinter库，用于创建GUI
 import tkinter as tk
+# 从tkinter中导入特定组件
 from tkinter import filedialog, messagebox, Scrollbar, Frame, Toplevel, Label, Button, Canvas, ttk
+# 导入rsa库，用于执行RSA加密/解密操作
 import rsa
 import time
+# 从gmpy2库导入gcdext（扩展欧几里得算法）和powmod（模幂运算），用于数学计算
 from gmpy2 import gcdext, powmod
+# 从libnum库导入n2s函数，可能用于数字到字符串的转换
 from libnum import n2s
+# 导入base64库，用于编码和解码二进制数据为文本格式
 import base64
+# 从pyasn1.type库导入univ和namedtype，用于ASN.1结构的定义
 from pyasn1.type import univ, namedtype
+# 从pyasn1.codec.der库导入encoder，用于将ASN.1对象编码为DER格式
 from pyasn1.codec.der import encoder as der_encoder
+# 从math库导入gcd函数，用于求两个数的最大公约数
 from math import gcd
+# 从PIL库导入Image, ImageTk, 和 ImageDraw，用于图像处理
 from PIL import Image, ImageTk, ImageDraw
+# 从cryptography.hazmat.primitives库导入serialization，用于序列化密钥
 from cryptography.hazmat.primitives import serialization
+# 从cryptography.hazmat.backends库导入default_backend，用于提供默认后端实现
 from cryptography.hazmat.backends import default_backend
 import sys
+# 文件路径操作或操作系统级别的功能
 import os
 
 
 def resource_path(relative_path):
-    """ 获取资源的绝对路径，适用于 dev 和 PyInstaller """
     try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        # 尝试获取由PyInstaller创建的临时文件夹路径
+        # 当应用程序被PyInstaller打包时，所有资源文件都会被放置在一个临时文件夹中，
+        # 并且这个文件夹的路径会被存储在_MEIPASS这个特殊变量中。
         base_path = sys._MEIPASS
     except Exception:
+        # 如果没有找到_MEIPASS变量，则说明当前是在开发环境中运行
+        # 或者应用程序不是通过PyInstaller打包的。
+        # 在这种情况下，使用当前脚本所在的目录作为基础路径。
         base_path = os.path.abspath(".")
 
+    # 使用os.path.join将基础路径和传入的相对路径连接起来，得到资源文件的绝对路径。
     return os.path.join(base_path, relative_path)
 
 # 公钥 PEM 格式生成函数
 # region
+# 定义一个ASN.1结构体，表示RSA公钥
 class RSAPublicKey(univ.Sequence):
+    # 定义序列中包含的组件类型
     componentType = namedtype.NamedTypes(
+        # 模数（大整数）
         namedtype.NamedType('modulus', univ.Integer()),
+        # 公共指数
         namedtype.NamedType('publicExponent', univ.Integer())
     )
 
 def create_pem_public_key(e, n):
+    # 创建一个空的RSA公钥实例
     rsa_pub_key = RSAPublicKey()
+    
+    # 设置模数
     rsa_pub_key.setComponentByName('modulus', n)
+    
+    # 设置公共指数
     rsa_pub_key.setComponentByName('publicExponent', e)
+    
+    # 将ASN.1对象编码为DER格式
     der_encoded = der_encoder.encode(rsa_pub_key)
+    
+    # 对DER编码的数据进行Base64编码
     b64_encoded = base64.b64encode(der_encoded).decode('utf-8')
+    
+    # 构造PEM格式的字符串
     pem_public_key = f"-----BEGIN RSA PUBLIC KEY-----\n{b64_encoded}\n-----END RSA PUBLIC KEY-----"
+    
+    # 返回PEM格式的公钥
     return pem_public_key
-
 # endregion
 class RsaApp:
 
@@ -138,33 +172,35 @@ class RsaApp:
         self.generate_keys()
 
     # 关于
-    #region
     def show_about(self):
+        # 创建一个新的顶级窗口（Toplevel），作为关于窗口
         about_window = Toplevel(self.master)
-        about_window.title("关于")
-        about_window.geometry("374x320")
+        about_window.title("关于")  # 设置窗口标题
+        about_window.geometry("374x320")  # 设置窗口初始大小
 
-        # 获取屏幕宽高，居中显示窗口
+        # 获取屏幕宽度和高度，以便将窗口居中显示
         screen_width = about_window.winfo_screenwidth()
         screen_height = about_window.winfo_screenheight()
-        position_top = int(screen_height / 2 - 320 / 2)
-        position_left = int(screen_width / 2 - 374 / 2)
-        about_window.geometry(f"374x320+{position_left}+{position_top}")
+        position_top = int(screen_height / 2 - 320 / 2)  # 计算窗口顶部位置
+        position_left = int(screen_width / 2 - 374 / 2)  # 计算窗口左侧位置
+        about_window.geometry(f"374x320+{position_left}+{position_top}")  # 更新窗口位置
 
         # 设置窗口图标
-        icon_path = resource_path('logo.ico')
-        about_window.iconbitmap(icon_path)
+        icon_path = resource_path('logo.ico')  # 获取图标文件路径
+        about_window.iconbitmap(icon_path)  # 设置窗口图标
 
-        # 加载背景图
-        jpg_path = resource_path('tr.jpg')
-        background_image = Image.open(jpg_path)
-        # 转换为 Tkinter 可用的图片
+        # 加载背景图片
+        jpg_path = resource_path('tr.jpg')  # 获取背景图片路径
+        background_image = Image.open(jpg_path)  # 打开背景图片
+        # 将PIL图像转换为Tkinter可以使用的PhotoImage
         background_photo = ImageTk.PhotoImage(background_image)
 
-        # 使用 Canvas 显示背景
-        canvas = tk.Canvas(about_window, width=374, height=320, highlightthickness=0)
-        canvas.pack(fill="both", expand=True)
+        # 使用Canvas控件来显示背景图片
+        canvas = tk.Canvas(about_window, width=374, height=320, highlightthickness=0)  # 创建Canvas
+        canvas.pack(fill="both", expand=True)  # 将Canvas填充到整个窗口
+        # 在Canvas上创建背景图片
         canvas.create_image(0, 0, anchor="nw", image=background_photo)
+        # 保存对背景图片的引用，防止被垃圾回收
         canvas.image = background_photo
 
         # 添加文字控件
@@ -178,27 +214,34 @@ class RsaApp:
         canvas.create_text(187, 152, text="GitHub:", font=("Arial", 12), fill="black")  # 阴影
         canvas.create_text(185, 150, text="GitHub:", font=("Arial", 12), fill="white")  # 主文字
 
-
         # 添加 GitHub 按钮
-        github_button = ttk.Button(about_window, text="GitHub仓库", command=lambda: self.open_github("https://github.com/THEXN/rsa"))
+        github_button = ttk.Button(about_window, text="GitHub仓库",
+                                   command=lambda: self.open_github("https://github.com/THEXN/rsa"))
+        # 在Canvas上放置按钮
         canvas.create_window(185, 190, window=github_button)
-
-
     def open_github(self, url):
+        # 导入webbrowser模块，用于打开网页
         import webbrowser
+        # 使用默认浏览器打开指定URL
         webbrowser.open(url)
-
-    #endregion
         
     # rsa加密解密算法逻辑
     # region
     def toggle_common_modulus_interface(self):
+        """
+        切换共模攻击界面的显示和隐藏。
+        如果当前没有共模攻击界面，则创建一个；否则，销毁现有的界面。
+        """
         if self.common_modulus_frame is None:
             self.create_common_modulus_interface()
         else:
             self.destroy_common_modulus_interface()
 
     def generate_keys(self):
+        """
+        生成公钥和私钥。
+        根据用户选择的模式（自动或手动），生成新的密钥对或仅生成公钥。
+        """
         if self.key_gen_method_var.get() == 'auto':
             # 自动生成模式，生成新的一对公钥和私钥
             bit_size = self.bit_size_var.get()
@@ -217,7 +260,10 @@ class RsaApp:
                 messagebox.showerror("错误", str(e))
 
     def display_keys(self):
-        """显示公钥和私钥"""
+        """
+        显示公钥和私钥。
+        公钥总是显示在界面上，而私钥只在存在时显示。
+        """
         # 显示公钥
         self.pub_key_entry.delete('1.0', 'end')
         self.pub_key_entry.insert('1.0', self.pubkey.save_pkcs1().decode('utf-8'))
@@ -230,7 +276,10 @@ class RsaApp:
             self.priv_key_entry.insert('1.0', "无可用私钥")
 
     def toggle_key_inputs(self):
-        """切换手动输入和自动生成模式"""
+        """
+        切换手动输入和自动生成模式。
+        在自动模式下禁用手动输入框，在手动模式下启用输入框。
+        """
         if self.key_gen_method_var.get() == 'auto':
             # 自动模式下禁用手动输入框
             self.e_entry.config(state='disabled')
@@ -241,6 +290,9 @@ class RsaApp:
             self.n_entry.config(state='normal')
 
     def select_file(self):
+        """
+        选择文件并读取其内容到输入框中。
+        """
         filename = filedialog.askopenfilename()
         if filename:
             with open(filename, 'r') as file:
@@ -248,6 +300,10 @@ class RsaApp:
                 self.in_entry.insert('1.0', file.read())
 
     def encode_click(self):
+        """
+        处理加密点击事件。
+        将输入文本加密，并将结果以数字形式显示。
+        """
         input_text = self.get_input()
         if input_text:
             try:
@@ -260,6 +316,10 @@ class RsaApp:
                 messagebox.showerror("错误", str(e))
 
     def decode_click(self):
+        """
+        处理解密点击事件。
+        将输入的数字解密为原始文本。
+        """
         input_text = self.get_input()
         priv_key_str = self.priv_key_entry.get('1.0', tk.END).strip()
         if input_text and priv_key_str:
@@ -275,10 +335,15 @@ class RsaApp:
                 messagebox.showerror("错误", str(e))
 
     def get_input(self):
-        """从输入框获取内容"""
-        return self.in_entry.get('1.0', tk.END).strip() 
+        """
+        从输入框获取内容。
+        """
+        return self.in_entry.get('1.0', tk.END).strip()
 
     def output_result(self, result, filename=None):
+        """
+        显示结果并在需要时保存到文件。
+        """
         self.out_entry.delete('1.0', tk.END)
         self.out_entry.insert('1.0', result)
         if self.output_method_var.get() == 'file' and filename:
@@ -286,16 +351,22 @@ class RsaApp:
                 file.write(result)
 
     def save_to_file(self, filename, content):
+        """
+        将内容保存到指定文件。
+        """
         with open(filename, 'w') as file:
             file.write(content)
         messagebox.showinfo("文件保存", f"内容已保存到 {filename}")
     # endregion
     
-    #共模攻击逻辑
+    # 共模攻击逻辑
     # region
-    # 切换共模攻击界面显示与隐藏
+
     def toggle_common_modulus_interface(self):
-        # 如果 common_modulus_frame 尚未创建，则创建
+        """
+        切换共模攻击界面的显示与隐藏。
+        如果 common_modulus_frame 尚未创建，则创建；否则，根据当前状态显示或隐藏。
+        """
         if self.common_modulus_frame is None:
             self.create_common_modulus_interface()  # 第一次调用时创建界面
 
@@ -308,34 +379,42 @@ class RsaApp:
 
 
     def create_common_modulus_interface(self):
-        self.common_modulus_frame = tk.Frame(self.master)       
-        # 创建共模攻击界面（初始隐藏）
+        """
+        创建共模攻击界面（初始隐藏）。
+        """
         self.common_modulus_frame = tk.Frame(self.master)
 
+        # 模数 n 输入框
         tk.Label(self.common_modulus_frame, text="模数 n:").grid(row=0, column=0, sticky="e")
         self.entry_n = tk.Entry(self.common_modulus_frame)
         self.entry_n.grid(row=0, column=1)
 
+        # 模数 n1 输入框
         tk.Label(self.common_modulus_frame, text="模数 n1:").grid(row=1, column=0, sticky="e")
         self.entry_n1 = tk.Entry(self.common_modulus_frame)
         self.entry_n1.grid(row=1, column=1)
 
+        # 模数 n2 输入框
         tk.Label(self.common_modulus_frame, text="模数 n2:").grid(row=2, column=0, sticky="e")
         self.entry_n2 = tk.Entry(self.common_modulus_frame)
         self.entry_n2.grid(row=2, column=1)
 
+        # 密文 c1 输入框
         tk.Label(self.common_modulus_frame, text="密文 c1:").grid(row=3, column=0, sticky="e")
         self.entry_c1 = tk.Entry(self.common_modulus_frame)
         self.entry_c1.grid(row=3, column=1)
 
+        # 密文 c2 输入框
         tk.Label(self.common_modulus_frame, text="密文 c2:").grid(row=4, column=0, sticky="e")
         self.entry_c2 = tk.Entry(self.common_modulus_frame)
         self.entry_c2.grid(row=4, column=1)
 
+        # 公钥指数 e1 输入框
         tk.Label(self.common_modulus_frame, text="公钥指数 e1:").grid(row=5, column=0, sticky="e")
         self.entry_e1 = tk.Entry(self.common_modulus_frame)
         self.entry_e1.grid(row=5, column=1)
 
+        # 公钥指数 e2 输入框
         tk.Label(self.common_modulus_frame, text="公钥指数 e2:").grid(row=6, column=0, sticky="e")
         self.entry_e2 = tk.Entry(self.common_modulus_frame)
         self.entry_e2.grid(row=6, column=1)
@@ -352,8 +431,12 @@ class RsaApp:
         # 解密按钮
         tk.Button(self.common_modulus_frame, text="解密", command=self.decrypt_common_modulus).grid(row=9, column=0, columnspan=2, padx=5, pady=5)
 
-    
+
     def decrypt_common_modulus(self):
+        """
+        执行共模攻击解密操作。
+        根据输入的模数、密文和公钥指数进行解密。
+        """
         try:
             n = self.entry_n.get()
             c1 = int(self.entry_c1.get())
@@ -384,67 +467,79 @@ class RsaApp:
         except ValueError:
             messagebox.showerror("输入错误", "请输入有效的数字！")
 
-            
+
     def load_public_key1(self):
-        """加载第一个公钥文件并解析 e1 和 n1"""
+        """
+        加载第一个公钥文件并解析 e1 和 n1。
+        """
         filename = filedialog.askopenfilename(title="选择第一个公钥文件", filetypes=(("PEM 文件", "*.pem"), ("所有文件", "*.*")))
         if filename:
             try:
                 with open(filename, 'rb') as f:
                     pubkey_data = f.read()
                     pubkey = rsa.PublicKey.load_pkcs1(pubkey_data)
-                
-                    # 将 n 填充到 n1
-                    self.entry_n1.delete(0, tk.END)
-                    self.entry_n1.insert(0, str(pubkey.n))
-                
-                    # 填充 e1
-                    self.entry_e1.delete(0, tk.END)
-                    self.entry_e1.insert(0, str(pubkey.e))
-                
-                    messagebox.showinfo("公钥1加载成功", "第一个公钥文件已加载，模数 n1 和指数 e1 已自动填充。")
+            
+                # 将 n 填充到 n1
+                self.entry_n1.delete(0, tk.END)
+                self.entry_n1.insert(0, str(pubkey.n))
+            
+                # 填充 e1
+                self.entry_e1.delete(0, tk.END)
+                self.entry_e1.insert(0, str(pubkey.e))
+            
+                messagebox.showinfo("公钥1加载成功", "第一个公钥文件已加载，模数 n1 和指数 e1 已自动填充。")
             except Exception as e:
                 messagebox.showerror("加载失败", f"无法解析第一个公钥文件: {e}")
 
+
     def load_public_key2(self):
-        """加载第二个公钥文件并解析 e2 和 n2"""
+        """
+        加载第二个公钥文件并解析 e2 和 n2。
+        """
         filename = filedialog.askopenfilename(title="选择第二个公钥文件", filetypes=(("PEM 文件", "*.pem"), ("所有文件", "*.*")))
         if filename:
             try:
                 with open(filename, 'rb') as f:
                     pubkey_data = f.read()
                     pubkey = rsa.PublicKey.load_pkcs1(pubkey_data)
-                
-                    # 将 n 填充到 n2
-                    self.entry_n2.delete(0, tk.END)
-                    self.entry_n2.insert(0, str(pubkey.n))
-                
-                    # 填充 e2
-                    self.entry_e2.delete(0, tk.END)
-                    self.entry_e2.insert(0, str(pubkey.e))
-                
-                    messagebox.showinfo("公钥2加载成功", "第二个公钥文件已加载，模数 n2 和指数 e2 已自动填充。")
+            
+                # 将 n 填充到 n2
+                self.entry_n2.delete(0, tk.END)
+                self.entry_n2.insert(0, str(pubkey.n))
+            
+                # 填充 e2
+                self.entry_e2.delete(0, tk.END)
+                self.entry_e2.insert(0, str(pubkey.e))
+            
+                messagebox.showinfo("公钥2加载成功", "第二个公钥文件已加载，模数 n2 和指数 e2 已自动填充。")
             except Exception as e:
                 messagebox.showerror("加载失败", f"无法解析第二个公钥文件: {e}")
 
+
     def verify_and_set_n(self):
-        """在解密前验证 n1 和 n2 一致性并设置 n"""
+        """
+        在解密前验证 n1 和 n2 一致性并设置 n。
+        """
         n1 = self.entry_n1.get()
         n2 = self.entry_n2.get()
-    
+
         if n1 and n2:
             if n1 == n2:
                 self.entry_n.delete(0, tk.END)
                 self.entry_n.insert(0, n1)
             else:
                 messagebox.showerror("模数不匹配", "模数 n1 和 n2 不一致，请检查公钥文件。")
+
     # endregion
     
-    #循环攻击逻辑
+    # 循环攻击逻辑
     # region
-    # 切换私钥计算界面显示与隐藏
+
     def toggle_private_key_interface(self):
-        # 如果 private_key_frame 尚未创建，则创建
+        """
+        切换私钥计算界面显示与隐藏。
+        如果 private_key_frame 尚未创建，则创建；否则，根据当前状态显示或隐藏。
+        """
         if self.private_key_frame is None:
             self.create_private_key_interface()  # 第一次调用时创建界面
 
@@ -456,10 +551,13 @@ class RsaApp:
             self.private_key_frame.grid(row=12, column=0, columnspan=2, sticky="nsew")  # 在相同的位置显示
 
 
-    # 创建私钥计算界面
     def create_private_key_interface(self):
+        """
+        创建私钥计算界面。
+        包括输入框 p、q、e 和计算按钮等。
+        """
         self.private_key_frame = tk.Frame(self.master)
-    
+
         # 输入框 p
         tk.Label(self.private_key_frame, text="质数 p:").grid(row=0, column=0, sticky="e")
         self.entry_p = tk.Entry(self.private_key_frame)
@@ -478,10 +576,12 @@ class RsaApp:
         # 计算按钮
         tk.Button(self.private_key_frame, text="计算私钥 d", command=self.compute_private_key).grid(row=3, column=0, padx=5, pady=5)
         tk.Button(self.private_key_frame, text="从PEM文件提取参数", command=self.extract_params_from_pem).grid(row=3, column=1, padx=5, pady=5)
+
         # 显示私钥 d 的输入框
         tk.Label(self.private_key_frame, text="私钥 d:").grid(row=4, column=0, sticky="e")
         self.entry_d = tk.Entry(self.private_key_frame)
         self.entry_d.grid(row=4, column=1)
+
         # 显示模数 n 的标签
         tk.Label(self.private_key_frame, text="模数 n:").grid(row=5, column=0, sticky="e")
         self.entry_n = tk.Entry(self.private_key_frame)
@@ -492,8 +592,12 @@ class RsaApp:
         self.entry_k = tk.Entry(self.private_key_frame)
         self.entry_k.grid(row=6, column=1)
 
-    # 计算私钥 d
+
     def compute_private_key(self):
+        """
+        计算私钥 d。
+        根据输入的质数 p、q 和公钥指数 e 计算私钥 d。
+        """
         try:
             p = int(self.entry_p.get())
             q = int(self.entry_q.get())
@@ -512,15 +616,18 @@ class RsaApp:
             # 显示结果
             self.entry_d.delete(0, tk.END)
             self.entry_d.insert(0, str(d))
-            
+        
             self.entry_n.delete(0, tk.END)
             self.entry_n.insert(0, str(n))
 
         except ValueError:
             messagebox.showerror("输入错误", "请输入有效的数字！")
 
-    # 求逆元的扩展欧几里得算法
+
     def mod_inverse(self, a, m):
+        """
+        使用扩展欧几里得算法求逆元。
+        """
         m0, x0, x1 = m, 0, 1
         if m == 1:
             return 0
@@ -531,9 +638,13 @@ class RsaApp:
         if x1 < 0:
             x1 += m0
         return x1
-    
-        # 从PEM文件提取所有参数
+
+
     def extract_params_from_pem(self):
+        """
+        从PEM文件中提取所有参数。
+        提取公钥和私钥参数并显示在界面上。
+        """
         # 选择PEM文件
         filename = filedialog.askopenfilename(filetypes=[("PEM files", "*.pem")])
         if not filename:
@@ -585,11 +696,17 @@ class RsaApp:
 
         except Exception as e:
             messagebox.showerror("错误", f"无法解析PEM文件: {e}")
-    # endregion                   
+
+    # endregion
                 
 # 启动主窗口
+# 创建一个 Tkinter 主窗口
 root = tk.Tk()
+# 获取图标文件的绝对路径
 icon_path = resource_path('logo.ico')
+# 设置主窗口的图标
 root.iconbitmap(icon_path)
+# 实例化 RsaApp 类，并传入主窗口对象
 app = RsaApp(root)
+# 启动 Tkinter 事件循环，使窗口保持显示状态
 root.mainloop()
