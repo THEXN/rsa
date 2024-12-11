@@ -7,7 +7,7 @@ import sys
 import time
 import tkinter as tk
 # 从math库导入gcd函数，用于求两个数的最大公约数
-from math import gcd
+from math import e, gcd
 # 从tkinter中导入特定组件
 from tkinter import filedialog, messagebox, Toplevel, ttk
 
@@ -115,7 +115,7 @@ class RsaApp:
                        command=self.toggle_key_inputs).grid(row=0, column=2, sticky="w")
 
         # 模数比特数选择
-        self.bit_size_var = tk.IntVar(value=128)  # 默认模数比特数为128位
+        self.bit_size_var = tk.IntVar(value=1024)  # 默认模数比特数为128位
         tk.Label(main_frame, text="选择模数比特数:").grid(row=1, column=0, sticky="w", padx=5)
         tk.OptionMenu(main_frame, self.bit_size_var, 128, 256, 512, 1024, 2048).grid(row=1, column=1, sticky="ew")
 
@@ -703,11 +703,11 @@ class RsaApp:
         try:
             e = int(self.entry_e.get())
             n = int(self.entry_n.get())
-
             for k in range(1, 10000):  # 遍历可能的 k 值
                 candidate = e * k - 1
                 if candidate % 2 != 0:  # 必须是偶数
                     continue
+                        
 
                 phi_n_candidates = []
                 for i in range(2, int(candidate ** 0.5) + 1):  # 因数分解
@@ -733,7 +733,7 @@ class RsaApp:
 
                             self.entry_d.delete(0, tk.END)
                             self.entry_d.insert(0, str(d))
-
+                            
                             self.entry_k.delete(0, tk.END)
                             self.entry_k.insert(0, str(k))
 
